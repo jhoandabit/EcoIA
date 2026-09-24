@@ -25,6 +25,17 @@ export default function SetupPage() {
         return;
       }
 
+      const { data: profile } = await supabase
+        .from("profiles")
+        .select("role")
+        .eq("id", data.user.id)
+        .maybeSingle();
+
+      if (profile?.role === "admin") {
+        window.location.href = "/admin";
+        return;
+      }
+
       setMessage("Tu cuenta está lista para reclamar la administración inicial.");
     }
 
