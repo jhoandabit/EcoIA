@@ -27,6 +27,12 @@ export default function LoginPage() {
     }
 
     const normalizedEmail = data.user.email?.toLowerCase() ?? "";
+
+    if (normalizedEmail === ADMIN_EMAIL) {
+      window.location.href = "/setup";
+      return;
+    }
+
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
@@ -35,11 +41,6 @@ export default function LoginPage() {
 
     if (profile?.role === "admin") {
       window.location.href = "/admin";
-      return;
-    }
-
-    if (normalizedEmail === ADMIN_EMAIL) {
-      window.location.href = "/setup";
       return;
     }
 
