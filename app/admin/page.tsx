@@ -44,8 +44,9 @@ export default function AdminPage() {
         <div className="mb-8 rounded-3xl bg-slate-950 p-8 text-white">
           <div className="flex items-center gap-3"><ShieldCheck className="text-emerald-400" /><div><h2 className="text-2xl font-bold">Administración privada</h2><p className="text-slate-400">{email}</p></div></div>
         </div>
-        <div className="grid gap-5 md:grid-cols-3">
+        <div className="mb-5 grid gap-5 md:grid-cols-2">
           <a href="/admin/stations" className="rounded-2xl bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><Wifi className="text-emerald-600" /><h3 className="mt-4 font-bold">Estaciones</h3><p className="mt-2 text-sm text-slate-500">Configurar ECOIA-001, ECOIA-002 y futuras estaciones.</p><span className="mt-4 inline-block text-sm font-bold text-emerald-700">Administrar estaciones →</span></a>
+          <a href="/admin/students" className="rounded-2xl bg-white p-6 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md"><ShieldCheck className="text-emerald-600" /><h3 className="mt-4 font-bold">Estudiantes</h3><p className="mt-2 text-sm text-slate-500">Registro individual y carga masiva mediante archivo CSV.</p><span className="mt-4 inline-block text-sm font-bold text-emerald-700">Administrar estudiantes →</span></a>
           <div className="rounded-2xl bg-white p-6 shadow-sm"><Settings className="text-emerald-600" /><h3 className="mt-4 font-bold">Sistema</h3><p className="mt-2 text-sm text-slate-500">Parámetros, puntos, clasificación y configuración general.</p></div>
           <div className="rounded-2xl bg-white p-6 shadow-sm"><ShieldCheck className="text-emerald-600" /><h3 className="mt-4 font-bold">Seguridad</h3><p className="mt-2 text-sm text-slate-500">El dashboard público permanece separado de las operaciones administrativas.</p></div>
         </div>
