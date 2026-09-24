@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { Activity, Camera, Leaf, Recycle, Server, Users } from "lucide-react";
+import { Activity, Camera, Leaf, Recycle, Server, Users, type LucideIcon } from "lucide-react";
 import { createClient } from "../lib/supabase/client";
 
 type Station = {
@@ -20,6 +20,12 @@ type Summary = {
   stations: number;
   online_stations: number;
   station_list: Station[];
+};
+
+type MetricCard = {
+  label: string;
+  value: number;
+  Icon: LucideIcon;
 };
 
 const emptySummary: Summary = {
@@ -45,6 +51,13 @@ export default function Home() {
     load();
   }, []);
 
+  const metrics: MetricCard[] = [
+    { label: "Estudiantes", value: summary.students, Icon: Users },
+    { label: "Eventos", value: summary.events, Icon: Recycle },
+    { label: "Puntos", value: summary.points, Icon: Leaf },
+    { label: "Estaciones", value: summary.stations, Icon: Server },
+  ];
+
   return (
     <main className="min-h-screen">
       <header className="border-b border-emerald-100 bg-white">
@@ -68,16 +81,11 @@ export default function Home() {
         </div>
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {[
-            ["Estudiantes", summary.students, Users],
-            ["Eventos", summary.events, Recycle],
-            ["Puntos", summary.points, Leaf],
-            ["Estaciones", summary.stations, Server],
-          ].map(([label, value, Icon]) => (
-            <div key={label as string} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+          {metrics.map(({ label, value, Icon }) => (
+            <div key={label} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <Icon className="text-emerald-600" size={22} />
-              <div className="mt-5 text-sm text-slate-500">{label as string}</div>
-              <div className="text-3xl font-black">{loading ? "…" : (value as number).toLocaleString("es-CO")}</div>
+              <div className="mt-5 text-sm text-slate-500">{label}</div>
+              <div className="text-3xl font-black">{loading ? "…" : value.toLocaleString("es-CO")}</div>
             </div>
           ))}
         </div>
