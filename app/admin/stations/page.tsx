@@ -66,6 +66,7 @@ export default function AdminStationsPage() {
   const [allowed, setAllowed] = useState(false);
   const [editing, setEditing] = useState<Station | null>(null);
   const [form, setForm] = useState<FormState>(emptyForm);
+  const [showForm, setShowForm] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
 
@@ -114,13 +115,21 @@ export default function AdminStationsPage() {
 
   function startCreate() {
     setEditing(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm });
+    setShowForm(true);
     setMessage("");
     setError("");
+    requestAnimationFrame(() => {
+      document.getElementById("nueva-estacion-form")?.scrollIntoView({
+        behavior: "smooth",
+        block: "start",
+      });
+    });
   }
 
   function startEdit(station: Station) {
     setEditing(station);
+    setShowForm(true);
     setForm({
       code: station.code,
       name: station.name,
@@ -137,7 +146,8 @@ export default function AdminStationsPage() {
 
   function closeForm() {
     setEditing(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm });
+    setShowForm(false);
   }
 
   async function saveStation() {
@@ -251,27 +261,35 @@ export default function AdminStationsPage() {
           </div>
           <div className="flex gap-2">
             <button
+              type="button"
               onClick={loadStations}
               className="flex items-center gap-2 rounded-xl border bg-white px-4 py-2 text-sm font-semibold"
             >
               <RefreshCw size={17} /> Actualizar
             </button>
             <button
-              onClick={startCreate}
-              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white"
+              id="nueva-estacion-button"
+              type="button"
+              onClick={(event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                startCreate();
+              }}
+              className="flex items-center gap-2 rounded-xl bg-emerald-600 px-4 py-2 text-sm font-bold text-white hover:bg-emerald-700 active:scale-[0.98]"
+              aria-label="Crear nueva estación"
             >
               <Plus size={17} /> Nueva estación
             </button>
           </div>
         </div>
 
-        {(editing || form.code) && (
-          <div className="mb-7 rounded-3xl bg-white p-6 shadow-sm">
+        {showForm && (
+          <div id="nueva-estacion-form" className="mb-7 rounded-3xl bg-white p-6 shadow-sm">
             <div className="mb-5 flex items-center justify-between">
               <h3 className="text-lg font-bold">
                 {editing ? "Editar estación" : "Nueva estación"}
               </h3>
-              <button onClick={closeForm} className="rounded-lg p-2 hover:bg-slate-100">
+              <button type="button" onClick={closeForm} className="rounded-lg p-2 hover:bg-slate-100">
                 <X size={18} />
               </button>
             </div>
@@ -321,10 +339,11 @@ export default function AdminStationsPage() {
             </div>
 
             <div className="mt-5 flex justify-end gap-2">
-              <button onClick={closeForm} className="rounded-xl border px-5 py-3 font-semibold">
+              <button type="button" onClick={closeForm} className="rounded-xl border px-5 py-3 font-semibold">
                 Cancelar
               </button>
               <button
+                type="button"
                 onClick={saveStation}
                 disabled={saving}
                 className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white disabled:opacity-60"
@@ -381,6 +400,7 @@ export default function AdminStationsPage() {
                       <td className="px-5 py-4">
                         <div className="flex justify-end gap-2">
                           <button
+                            type="button"
                             onClick={() => startEdit(station)}
                             className="rounded-lg border p-2 text-slate-600 hover:bg-slate-50"
                             title="Editar"
@@ -388,6 +408,7 @@ export default function AdminStationsPage() {
                             <Edit3 size={16} />
                           </button>
                           <button
+                            type="button"
                             onClick={() => deleteStation(station)}
                             className="rounded-lg border p-2 text-red-600 hover:bg-red-50"
                             title="Eliminar"
