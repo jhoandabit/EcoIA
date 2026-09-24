@@ -1,13 +1,11 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase/client";
+import { createClient } from "../../lib/supabase/client";
 
 const ADMIN_EMAIL = "jhdbermude@gmail.cm";
 
 export default function SetupPage() {
-  const router = useRouter();
   const supabase = createClient();
   const [message, setMessage] = useState("Verificando cuenta...");
   const [loading, setLoading] = useState(false);
