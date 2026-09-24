@@ -1,11 +1,50 @@
-import { Activity, Camera, Leaf, Recycle, Server, Users } from "lucide-react";
+"use client";
 
-const stations = [
-  { code: "ECOIA-001", name: "Estación principal", status: "offline", device: "ESP32-S3 + OV3660" },
-  { code: "ECOIA-002", name: "Estación secundaria", status: "offline", device: "ESP32-S3 + OV3660" },
-];
+import { useEffect, useState } from "react";
+import { Activity, Camera, Leaf, Recycle, Server, Users } from "lucide-react";
+import { createClient } from "../lib/supabase/client";
+
+type Station = {
+  code: string;
+  name: string;
+  status: string;
+  device_model: string;
+  camera_model: string | null;
+  last_seen_at: string | null;
+};
+
+type Summary = {
+  students: number;
+  events: number;
+  points: number;
+  stations: number;
+  online_stations: number;
+  station_list: Station[];
+};
+
+const emptySummary: Summary = {
+  students: 0,
+  events: 0,
+  points: 0,
+  stations: 0,
+  online_stations: 0,
+  station_list: [],
+};
 
 export default function Home() {
+  const [summary, setSummary] = useState<Summary>(emptySummary);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function load() {
+      const supabase = createClient();
+      const { data, error } = await supabase.rpc("dashboard_summary");
+      if (!error && data) setSummary(data as Summary);
+      setLoading(false);
+    }
+    load();
+  }, []);
+
   return (
     <main className="min-h-screen">
       <header className="border-b border-emerald-100 bg-white">
@@ -30,15 +69,15 @@ export default function Home() {
 
         <div className="mt-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {[
-            ["Estudiantes", "—", Users],
-            ["Eventos", "—", Recycle],
-            ["Puntos", "—", Leaf],
-            ["Estaciones", "2", Server],
+            ["Estudiantes", summary.students, Users],
+            ["Eventos", summary.events, Recycle],
+            ["Puntos", summary.points, Leaf],
+            ["Estaciones", summary.stations, Server],
           ].map(([label, value, Icon]) => (
             <div key={label as string} className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
               <Icon className="text-emerald-600" size={22} />
               <div className="mt-5 text-sm text-slate-500">{label as string}</div>
-              <div className="text-3xl font-black">{value as string}</div>
+              <div className="text-3xl font-black">{loading ? "…" : (value as number).toLocaleString("es-CO")}</div>
             </div>
           ))}
         </div>
@@ -47,21 +86,23 @@ export default function Home() {
           <div className="mb-5 flex items-center justify-between">
             <div>
               <h2 className="text-xl font-bold">Estaciones EcoIA</h2>
-              <p className="text-sm text-slate-500">Estado público de las estaciones.</p>
+              <p className="text-sm text-slate-500">{summary.online_stations} conectada(s) actualmente.</p>
             </div>
             <Camera className="text-emerald-600" />
           </div>
           <div className="grid gap-4 md:grid-cols-2">
-            {stations.map((station) => (
+            {summary.station_list.map((station) => (
               <article key={station.code} className="rounded-2xl border border-slate-200 p-5">
                 <div className="flex items-center justify-between">
                   <div>
                     <div className="font-bold">{station.code}</div>
                     <div className="text-sm text-slate-500">{station.name}</div>
                   </div>
-                  <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600">{station.status}</span>
+                  <span className={station.status === "online" ? "rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700" : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"}>
+                    {station.status}
+                  </span>
                 </div>
-                <div className="mt-5 flex items-center gap-2 text-sm text-slate-600"><Activity size={16} />{station.device}</div>
+                <div className="mt-5 flex items-center gap-2 text-sm text-slate-600"><Activity size={16} />{station.device_model} + {station.camera_model ?? "sin cámara"}</div>
               </article>
             ))}
           </div>
