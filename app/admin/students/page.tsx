@@ -48,6 +48,7 @@ export default function AdminStudentsPage() {
   const [students, setStudents] = useState<Student[]>([]);
   const [form, setForm] = useState<FormState>(emptyForm);
   const [editing, setEditing] = useState<Student | null>(null);
+  const [showForm, setShowForm] = useState(false);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -106,9 +107,11 @@ export default function AdminStudentsPage() {
 
   function newStudent() {
     setEditing(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm });
+    setShowForm(true);
     setError("");
     setMessage("");
+    window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function editStudent(student: Student) {
@@ -118,14 +121,16 @@ export default function AdminStudentsPage() {
       grade: student.grade ?? "",
       institution: student.institution ?? "",
     });
+    setShowForm(true);
     setError("");
     setMessage("");
     window.scrollTo({ top: 0, behavior: "smooth" });
   }
 
   function closeForm() {
+    setShowForm(false);
     setEditing(null);
-    setForm(emptyForm);
+    setForm({ ...emptyForm });
   }
 
   async function saveStudent() {
@@ -342,16 +347,26 @@ export default function AdminStudentsPage() {
           </div>
         </div>
 
-        {(editing || form.full_name) && (
+        {showForm && (
           <div className="mb-7 rounded-3xl bg-white p-6 shadow-sm">
             <div className="mb-5 flex justify-between">
-              <h3 className="text-lg font-bold">
-                {editing ? "Editar estudiante" : "Nuevo estudiante"}
-              </h3>
-              <button onClick={closeForm}>
+              <div>
+                <h3 className="text-lg font-bold">
+                  {editing ? "Editar estudiante" : "Nuevo estudiante"}
+                </h3>
+                <p className="mt-1 text-sm text-slate-500">
+                  Complete los datos del estudiante.
+                </p>
+              </div>
+              <button
+                onClick={closeForm}
+                aria-label="Cerrar formulario"
+                className="rounded-lg p-2 hover:bg-slate-100"
+              >
                 <X size={18} />
               </button>
             </div>
+
             <div className="grid gap-4 md:grid-cols-3">
               {(
                 [
@@ -363,6 +378,7 @@ export default function AdminStudentsPage() {
                 <label key={key} className="text-sm font-semibold">
                   {label}
                   <input
+                    autoFocus={key === "full_name"}
                     value={form[key]}
                     placeholder={placeholder}
                     onChange={(e) =>
@@ -373,6 +389,7 @@ export default function AdminStudentsPage() {
                 </label>
               ))}
             </div>
+
             <div className="mt-5 flex justify-end gap-2">
               <button
                 onClick={closeForm}
@@ -385,7 +402,7 @@ export default function AdminStudentsPage() {
                 disabled={saving}
                 className="flex items-center gap-2 rounded-xl bg-emerald-600 px-5 py-3 font-bold text-white disabled:opacity-60"
               >
-                <Save size={17} /> {saving ? "Guardando..." : "Guardar"}
+                <Save size={17} /> {saving ? "Guardando..." : "Guardar estudiante"}
               </button>
             </div>
           </div>
@@ -402,6 +419,7 @@ export default function AdminStudentsPage() {
           <button
             onClick={loadStudents}
             className="rounded-xl border bg-white p-3"
+            aria-label="Actualizar estudiantes"
           >
             <RefreshCw size={17} />
           </button>
@@ -429,12 +447,14 @@ export default function AdminStudentsPage() {
                         <button
                           onClick={() => editStudent(student)}
                           className="rounded-lg border p-2"
+                          aria-label={`Editar ${student.full_name}`}
                         >
                           <Edit3 size={16} />
                         </button>
                         <button
                           onClick={() => deleteStudent(student)}
                           className="rounded-lg border p-2 text-red-600"
+                          aria-label={`Eliminar ${student.full_name}`}
                         >
                           <Trash2 size={16} />
                         </button>
