@@ -4,6 +4,8 @@ import { FormEvent, useState } from "react";
 import { LockKeyhole, Recycle } from "lucide-react";
 import { createClient } from "../../lib/supabase/client";
 
+const ADMIN_EMAIL = "jhdbermude@gmail.cm";
+
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -14,14 +16,36 @@ export default function LoginPage() {
     event.preventDefault();
     setLoading(true);
     setError("");
+
     const supabase = createClient();
-    const { error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) {
+    const { data, error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+
+    if (signInError || !data.user) {
       setError("Credenciales no válidas.");
       setLoading(false);
       return;
     }
-    window.location.href = "/admin";
+
+    const normalizedEmail = data.user.email?.toLowerCase() ?? "";
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("role")
+      .eq("id", data.user.id)
+      .single();
+
+    if (profile?.role === "admin") {
+      window.location.href = "/admin";
+      return;
+    }
+
+    if (normalizedEmail === ADMIN_EMAIL) {
+      window.location.href = "/setup";
+      return;
+    }
+
+    await supabase.auth.signOut();
+    setError("Esta cuenta no tiene permisos administrativos.");
+    setLoading(false);
   }
 
   return (
