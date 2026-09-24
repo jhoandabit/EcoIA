@@ -9,17 +9,27 @@ const ADMIN_EMAIL = "jhdbermude@gmail.cm";
 export default function SetupPage() {
   const router = useRouter();
   const supabase = createClient();
-  const [email, setEmail] = useState(ADMIN_EMAIL);
-  const [message, setMessage] = useState("");
+  const [message, setMessage] = useState("Verificando cuenta...");
   const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     async function checkUser() {
       const { data } = await supabase.auth.getUser();
+
       if (!data.user) {
-        setMessage("Primero crea tu usuario en Supabase Auth y luego inicia sesión con él.");
+        window.location.href = "/login";
+        return;
       }
+
+      if (data.user.email?.toLowerCase() !== ADMIN_EMAIL) {
+        await supabase.auth.signOut();
+        window.location.href = "/";
+        return;
+      }
+
+      setMessage("Tu cuenta está lista para reclamar la administración inicial.");
     }
+
     checkUser();
   }, [supabase]);
 
@@ -35,9 +45,9 @@ export default function SetupPage() {
       return;
     }
 
-    if (userData.user.email?.toLowerCase() !== email.toLowerCase()) {
-      setMessage("Esta configuración inicial está reservada para la cuenta administrativa definida para EcoIA 2.0.");
-      setLoading(false);
+    if (userData.user.email?.toLowerCase() !== ADMIN_EMAIL) {
+      await supabase.auth.signOut();
+      window.location.href = "/";
       return;
     }
 
@@ -50,12 +60,11 @@ export default function SetupPage() {
     }
 
     if (data === true) {
-      router.push("/admin");
-      router.refresh();
-    } else {
-      setMessage("La administración inicial ya fue reclamada. Inicia sesión con la cuenta administradora.");
+      window.location.href = "/admin";
+      return;
     }
 
+    setMessage("La administración inicial ya fue reclamada.");
     setLoading(false);
   }
 
@@ -67,19 +76,13 @@ export default function SetupPage() {
         </p>
         <h1 className="mt-3 text-3xl font-bold">Configuración inicial</h1>
         <p className="mt-3 text-slate-300">
-          Esta pantalla permite reclamar una sola vez la administración inicial de la plataforma.
+          Esta operación solo puede realizarse una vez y está reservada para la cuenta administrativa de EcoIA 2.0.
         </p>
 
-        <label className="mt-8 block text-sm font-medium text-slate-300">
-          Correo administrativo
-        </label>
-        <input
-          value={email}
-          onChange={(event) => setEmail(event.target.value)}
-          className="mt-2 w-full rounded-xl border border-slate-700 bg-slate-950 px-4 py-3 text-white outline-none focus:border-emerald-400"
-          type="email"
-          autoComplete="email"
-        />
+        <div className="mt-8 rounded-xl border border-slate-700 bg-slate-950 p-4">
+          <div className="text-xs uppercase tracking-wider text-slate-500">Cuenta administrativa</div>
+          <div className="mt-1 font-semibold">{ADMIN_EMAIL}</div>
+        </div>
 
         <button
           onClick={claimAdmin}
@@ -87,13 +90,6 @@ export default function SetupPage() {
           className="mt-6 w-full rounded-xl bg-emerald-500 px-4 py-3 font-semibold text-slate-950 transition hover:bg-emerald-400 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? "Configurando..." : "Reclamar administración"}
-        </button>
-
-        <button
-          onClick={() => router.push("/login")}
-          className="mt-3 w-full rounded-xl border border-slate-700 px-4 py-3 font-semibold text-slate-200 hover:bg-slate-800"
-        >
-          Ir al inicio de sesión
         </button>
 
         {message && (
