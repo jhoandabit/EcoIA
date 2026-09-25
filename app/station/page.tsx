@@ -310,10 +310,6 @@ export default function StationPage() {
   }
 
   async function registerRecycling() {
-    if (!student || !selectedMaterial || !busy === false) {
-      // La condición se mantiene simple abajo; esta línea evita registros sin estudiante/material.
-    }
-
     if (!student || !selectedMaterial || busy) return;
 
     setBusy(true);
