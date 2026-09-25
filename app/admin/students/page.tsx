@@ -14,6 +14,7 @@ import {
   X,
 } from "lucide-react";
 import * as XLSX from "xlsx";
+import { QRCodeSVG } from "qrcode.react";
 import { createClient } from "../../../lib/supabase/client";
 
 type Student = {
@@ -22,6 +23,7 @@ type Student = {
   grade: string | null;
   institution: string | null;
   created_at: string;
+  qr_token: string;
 };
 
 type FormState = {
@@ -56,6 +58,7 @@ export default function AdminStudentsPage() {
   const [allowed, setAllowed] = useState(false);
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+  const [qrStudent, setQrStudent] = useState<Student | null>(null);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   async function loadStudents() {
@@ -83,7 +86,7 @@ export default function AdminStudentsPage() {
 
     const { data, error: queryError } = await supabase
       .from("students")
-      .select("id, full_name, grade, institution, created_at")
+      .select("id, full_name, grade, institution, created_at, qr_token")
       .order("full_name");
 
     if (queryError) setError(queryError.message);
@@ -286,7 +289,7 @@ export default function AdminStudentsPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">
-              EcoIA 2.0 · Administración
+              EcoIA 3.0 · Administración
             </p>
             <h1 className="text-2xl font-black">Estudiantes</h1>
           </div>
@@ -433,6 +436,7 @@ export default function AdminStudentsPage() {
                   <th className="px-5 py-4">Nombre</th>
                   <th className="px-5 py-4">Grado</th>
                   <th className="px-5 py-4">Institución</th>
+                  <th className="px-5 py-4">QR</th>
                   <th className="px-5 py-4 text-right">Acciones</th>
                 </tr>
               </thead>
@@ -442,6 +446,15 @@ export default function AdminStudentsPage() {
                     <td className="px-5 py-4 font-bold">{student.full_name}</td>
                     <td className="px-5 py-4">{student.grade ?? "—"}</td>
                     <td className="px-5 py-4">{student.institution ?? "—"}</td>
+                    <td className="px-5 py-4">
+                      <button
+                        type="button"
+                        onClick={() => setQrStudent(student)}
+                        className="rounded-lg border px-3 py-2 text-xs font-bold text-emerald-700 hover:bg-emerald-50"
+                      >
+                        Ver QR
+                      </button>
+                    </td>
                     <td className="px-5 py-4">
                       <div className="flex justify-end gap-2">
                         <button
@@ -471,6 +484,27 @@ export default function AdminStudentsPage() {
             </div>
           )}
         </div>
+      {qrStudent && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-950/70 p-6">
+          <div className="w-full max-w-md rounded-3xl bg-white p-7 text-center shadow-2xl">
+            <div className="flex justify-end">
+              <button type="button" onClick={() => setQrStudent(null)} className="rounded-lg p-2 hover:bg-slate-100" aria-label="Cerrar QR">
+                <X size={18} />
+              </button>
+            </div>
+            <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">Identificación EcoIA</p>
+            <h3 className="mt-2 text-2xl font-black">{qrStudent.full_name}</h3>
+            <p className="mt-1 text-sm text-slate-500">Grado {qrStudent.grade ?? "—"}</p>
+            <div className="mx-auto mt-6 flex w-fit rounded-2xl border bg-white p-4">
+              <QRCodeSVG value={qrStudent.qr_token} size={260} level="M" includeMargin />
+            </div>
+            <p className="mt-4 break-all font-mono text-xs text-slate-400">{qrStudent.qr_token}</p>
+            <p className="mt-4 text-sm text-slate-500">Este código contiene únicamente el identificador QR del estudiante.</p>
+            <button type="button" onClick={() => setQrStudent(null)} className="mt-6 rounded-xl bg-slate-950 px-5 py-3 font-bold text-white">Cerrar</button>
+          </div>
+        </div>
+      )}
+
       </section>
     </main>
   );
