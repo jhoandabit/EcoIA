@@ -489,7 +489,9 @@ export default function StationPage() {
         return;
       }
 
-      setStudent(resolved as Student);
+      const resolvedStudent = resolved as Student;
+      studentRef.current = resolvedStudent;
+      setStudent(resolvedStudent);
       await stopScanner();
 
       const modelReady = await loadAiModel();
@@ -591,12 +593,16 @@ export default function StationPage() {
     await stopScanner();
     stopAiLoop();
     stopAiCamera();
+    studentRef.current = null;
+    resultRef.current = null;
     setStudent(null);
     setSelectedMaterial(null);
     setDetection(null);
+    resultRef.current = null;
     setResult(null);
     setManualToken("");
     setError("");
+    busyRef.current = false;
     setBusy(false);
     await sendHeartbeat();
     await startScanner();
