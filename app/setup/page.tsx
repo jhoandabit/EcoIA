@@ -19,12 +19,6 @@ export default function SetupPage() {
         return;
       }
 
-      if (data.user.email?.toLowerCase() !== ADMIN_EMAIL) {
-        await supabase.auth.signOut();
-        window.location.href = "/";
-        return;
-      }
-
       const { data: profile } = await supabase
         .from("profiles")
         .select("role")
@@ -54,12 +48,6 @@ export default function SetupPage() {
       return;
     }
 
-    if (userData.user.email?.toLowerCase() !== ADMIN_EMAIL) {
-      await supabase.auth.signOut();
-      window.location.href = "/";
-      return;
-    }
-
     const { data, error } = await supabase.rpc("claim_first_admin");
 
     if (error) {
@@ -85,12 +73,12 @@ export default function SetupPage() {
         </p>
         <h1 className="mt-3 text-3xl font-bold">Configuración inicial</h1>
         <p className="mt-3 text-slate-300">
-          Esta operación solo puede realizarse una vez y está reservada para la cuenta administrativa de EcoIA 3.0.
+          Esta operación solo puede realizarse una vez y está reservada para la primera cuenta autenticada.
         </p>
 
         <div className="mt-8 rounded-xl border border-slate-700 bg-slate-950 p-4">
           <div className="text-xs uppercase tracking-wider text-slate-500">Cuenta administrativa</div>
-          <div className="mt-1 font-semibold">{ADMIN_EMAIL}</div>
+          <div className="mt-1 font-semibold">Primera cuenta autenticada</div>
         </div>
 
         <button
