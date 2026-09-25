@@ -160,31 +160,79 @@ export default function StationPage() {
     setStatus("Preparando cámara para reconocer el residuo...");
 
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({
-        video: {
-          facingMode: { ideal: "environment" },
-          width: { ideal: 1280 },
-          height: { ideal: 720 },
-        },
-        audio: false,
-      });
+      if (!navigator.mediaDevices?.getUserMedia) {
+        throw new Error("getUserMedia no está disponible en este navegador.");
+      }
+
+      // El lector QR acaba de liberar su cámara. Esperamos un instante
+      // para evitar que el navegador considere el dispositivo todavía ocupado.
+      await new Promise((resolve) => window.setTimeout(resolve, 700));
+
+      stopAiCamera();
+
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: {
+            facingMode: { ideal: "environment" },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
+          audio: false,
+        });
+      } catch (firstError) {
+        // Algunos portátiles no aceptan constraints de cámara orientadas a
+        // dispositivos móviles. Reintentamos con la configuración mínima.
+        stream = await navigator.mediaDevices.getUserMedia({
+          video: true,
+          audio: false,
+        });
+
+        if (!stream) throw firstError;
+      }
 
       aiStreamRef.current = stream;
 
       const video = aiVideoRef.current;
-      if (!video) throw new Error("No se encontró el visor de cámara.");
+      if (!video) {
+        stream.getTracks().forEach((track) => track.stop());
+        aiStreamRef.current = null;
+        throw new Error("No se encontró el visor de cámara.");
+      }
 
       video.srcObject = stream;
+      await new Promise<void>((resolve) => {
+        if (video.readyState >= 2) {
+          resolve();
+          return;
+        }
+        const onLoaded = () => {
+          video.removeEventListener("loadedmetadata", onLoaded);
+          resolve();
+        };
+        video.addEventListener("loadedmetadata", onLoaded);
+      });
       await video.play();
 
       setAiCameraReady(true);
       setStatus("Coloca el residuo frente a la cámara y pulsa Analizar residuo.");
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? "No se pudo iniciar la cámara para IA. Verifica los permisos del navegador."
-          : "No se pudo iniciar la cámara para IA.",
-      );
+      const cameraError = err as DOMException;
+      let message = "No se pudo iniciar la cámara para IA.";
+
+      if (cameraError?.name === "NotAllowedError" || cameraError?.name === "PermissionDeniedError") {
+        message = "El navegador bloqueó la cámara. En la barra de direcciones, permite la cámara para eco-ia-pi.vercel.app y vuelve a intentarlo.";
+      } else if (cameraError?.name === "NotReadableError" || cameraError?.name === "TrackStartError") {
+        message = "La cámara está siendo utilizada por otra aplicación o el lector QR aún no la ha liberado. Cierra otras aplicaciones que usen la cámara y vuelve a intentarlo.";
+      } else if (cameraError?.name === "NotFoundError" || cameraError?.name === "DevicesNotFoundError") {
+        message = "No se encontró una cámara disponible en este dispositivo.";
+      } else if (cameraError?.name === "SecurityError") {
+        message = "El navegador no permite acceso a la cámara en este contexto.";
+      } else if (err instanceof Error) {
+        message = `No se pudo iniciar la cámara para IA: ${err.message}`;
+      }
+
+      setError(message);
       setStatus("Cámara IA no disponible.");
     }
   }
