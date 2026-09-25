@@ -121,7 +121,15 @@ export default function AdminStationsPage() {
   }
 
   useEffect(() => {
-    loadStations();
+    void loadStations();
+
+    const refreshTimer = window.setInterval(() => {
+      void loadStations();
+    }, 15_000);
+
+    return () => {
+      window.clearInterval(refreshTimer);
+    };
   }, []);
 
   function startCreate() {
