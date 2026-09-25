@@ -69,7 +69,10 @@ export default function Home() {
               <div className="text-xs text-slate-500">Reciclaje inteligente, IA y educación</div>
             </div>
           </div>
-          <a href="/login" className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white">Configuración</a>
+          <div className="flex items-center gap-2">
+            <a href="/station" className="rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-2 text-sm font-bold text-emerald-700">Abrir estación</a>
+            <a href="/login" className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white">Configuración</a>
+          </div>
         </div>
       </header>
 
