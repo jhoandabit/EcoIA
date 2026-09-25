@@ -59,6 +59,17 @@ function statusClass(status: Station["status"]) {
   return "bg-slate-100 text-slate-600";
 }
 
+function effectiveStatus(station: Station): Station["status"] {
+  if (station.status === "maintenance") return "maintenance";
+  if (
+    station.last_seen_at &&
+    Date.now() - new Date(station.last_seen_at).getTime() <= 90_000
+  ) {
+    return "online";
+  }
+  return "offline";
+}
+
 export default function AdminStationsPage() {
   const [stations, setStations] = useState<Station[]>([]);
   const [loading, setLoading] = useState(true);
@@ -136,7 +147,7 @@ export default function AdminStationsPage() {
       location: station.location ?? "",
       device_model: station.device_model ?? "",
       camera_model: station.camera_model ?? "",
-      status: station.status,
+      status: effectiveStatus(station),
       firmware_version: station.firmware_version ?? "",
     });
     setMessage("");
@@ -256,7 +267,7 @@ export default function AdminStationsPage() {
           <div>
             <h2 className="text-xl font-bold">Estaciones EcoIA</h2>
             <p className="text-sm text-slate-500">
-              Administra las estaciones de trabajo y su estado operativo.
+              Administra los puestos de trabajo EcoIA. El equipo principal es un portátil o tablet con cámara.
             </p>
           </div>
           <div className="flex gap-2">
@@ -299,9 +310,9 @@ export default function AdminStationsPage() {
                 ["code", "Código", "ECOIA-003"],
                 ["name", "Nombre", "Estación principal"],
                 ["location", "Ubicación", "Bloque A"],
-                ["device_model", "Modelo del dispositivo", "ESP32-S3"],
-                ["camera_model", "Cámara", "OV3660"],
-                ["firmware_version", "Firmware", "1.0.0"],
+                ["device_model", "Modelo del dispositivo", "TABLET/LAPTOP"],
+                ["camera_model", "Cámara", "Cámara integrada"],
+                ["firmware_version", "Firmware", "No aplica"],
               ].map(([key, label, placeholder]) => (
                 <label key={key} className="text-sm font-semibold text-slate-700">
                   {label}
@@ -373,52 +384,55 @@ export default function AdminStationsPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y">
-                  {stations.map((station) => (
-                    <tr key={station.id} className="hover:bg-slate-50">
-                      <td className="px-5 py-4">
-                        <div className="font-bold">{station.code}</div>
-                        <div className="text-xs text-slate-500">{station.name}</div>
-                        {station.location && (
-                          <div className="mt-1 text-xs text-slate-400">{station.location}</div>
-                        )}
-                      </td>
-                      <td className="px-5 py-4">{station.device_model ?? "—"}</td>
-                      <td className="px-5 py-4">{station.camera_model ?? "—"}</td>
-                      <td className="px-5 py-4">
-                        <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${statusClass(station.status)}`}>
-                          {station.status === "online" && <Wifi size={13} />}
-                          {station.status === "offline" && <WifiOff size={13} />}
-                          {station.status === "maintenance" && <Wrench size={13} />}
-                          {statusLabel(station.status)}
-                        </span>
-                      </td>
-                      <td className="px-5 py-4 text-slate-500">
-                        {station.last_seen_at
-                          ? new Date(station.last_seen_at).toLocaleString("es-CO")
-                          : "Nunca"}
-                      </td>
-                      <td className="px-5 py-4">
-                        <div className="flex justify-end gap-2">
-                          <button
-                            type="button"
-                            onClick={() => startEdit(station)}
-                            className="rounded-lg border p-2 text-slate-600 hover:bg-slate-50"
-                            title="Editar"
-                          >
-                            <Edit3 size={16} />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => deleteStation(station)}
-                            className="rounded-lg border p-2 text-red-600 hover:bg-red-50"
-                            title="Eliminar"
-                          >
-                            <Trash2 size={16} />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
+                  {stations.map((station) => {
+                    const currentStatus = effectiveStatus(station);
+                    return (
+                      <tr key={station.id} className="hover:bg-slate-50">
+                        <td className="px-5 py-4">
+                          <div className="font-bold">{station.code}</div>
+                          <div className="text-xs text-slate-500">{station.name}</div>
+                          {station.location && (
+                            <div className="mt-1 text-xs text-slate-400">{station.location}</div>
+                          )}
+                        </td>
+                        <td className="px-5 py-4">{station.device_model ?? "—"}</td>
+                        <td className="px-5 py-4">{station.camera_model ?? "—"}</td>
+                        <td className="px-5 py-4">
+                          <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-bold ${statusClass(currentStatus)}`}>
+                            {currentStatus === "online" && <Wifi size={13} />}
+                            {currentStatus === "offline" && <WifiOff size={13} />}
+                            {currentStatus === "maintenance" && <Wrench size={13} />}
+                            {statusLabel(currentStatus)}
+                          </span>
+                        </td>
+                        <td className="px-5 py-4 text-slate-500">
+                          {station.last_seen_at
+                            ? new Date(station.last_seen_at).toLocaleString("es-CO")
+                            : "Nunca"}
+                        </td>
+                        <td className="px-5 py-4">
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => startEdit(station)}
+                              className="rounded-lg border p-2 text-slate-600 hover:bg-slate-50"
+                              title="Editar"
+                            >
+                              <Edit3 size={16} />
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => deleteStation(station)}
+                              className="rounded-lg border p-2 text-red-600 hover:bg-red-50"
+                              title="Eliminar"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
