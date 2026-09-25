@@ -41,8 +41,8 @@ const emptyForm: FormState = {
   code: "",
   name: "",
   location: "",
-  device_model: "ESP32-S3",
-  camera_model: "OV3660",
+  device_model: "TABLET/LAPTOP",
+  camera_model: "Cámara integrada",
   status: "offline",
   firmware_version: "",
 };
@@ -226,7 +226,7 @@ export default function AdminStationsPage() {
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
           <div>
             <p className="text-xs font-bold uppercase tracking-widest text-emerald-600">
-              EcoIA 2.0 · Administración
+              EcoIA 3.0 · Administración
             </p>
             <h1 className="text-2xl font-black">Estaciones</h1>
           </div>
@@ -256,7 +256,7 @@ export default function AdminStationsPage() {
           <div>
             <h2 className="text-xl font-bold">Estaciones EcoIA</h2>
             <p className="text-sm text-slate-500">
-              Administra los equipos ESP32 y su estado operativo.
+              Administra las estaciones de trabajo y su estado operativo.
             </p>
           </div>
           <div className="flex gap-2">
