@@ -36,7 +36,7 @@ export default function AdminPage() {
     <main className="min-h-screen bg-slate-50">
       <header className="border-b bg-white">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-5">
-          <div><p className="text-xs font-bold uppercase tracking-widest text-emerald-600">EcoIA 2.0</p><h1 className="text-2xl font-black">Configuración</h1></div>
+          <div><p className="text-xs font-bold uppercase tracking-widest text-emerald-600">EcoIA 3.0</p><h1 className="text-2xl font-black">Configuración</h1></div>
           <button onClick={logout} className="flex items-center gap-2 rounded-xl border px-4 py-2 text-sm font-semibold"><LogOut size={17} /> Salir</button>
         </div>
       </header>
