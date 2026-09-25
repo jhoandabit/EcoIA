@@ -65,8 +65,8 @@ export default function Home() {
           <div className="flex items-center gap-3">
             <div className="rounded-2xl bg-emerald-600 p-3 text-white"><Recycle size={24} /></div>
             <div>
-              <div className="text-xl font-bold">EcoIA 2.0</div>
-              <div className="text-xs text-slate-500">Reciclaje, tecnología y educación</div>
+              <div className="text-xl font-bold">EcoIA 3.0</div>
+              <div className="text-xs text-slate-500">Reciclaje inteligente, IA y educación</div>
             </div>
           </div>
           <a href="/login" className="rounded-xl bg-slate-950 px-4 py-2 text-sm font-bold text-white">Configuración</a>
@@ -75,8 +75,8 @@ export default function Home() {
 
       <section className="mx-auto max-w-7xl px-6 py-10">
         <div className="rounded-3xl bg-gradient-to-br from-emerald-900 to-emerald-600 p-8 text-white shadow-xl">
-          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-emerald-100">Dashboard público</p>
-          <h1 className="max-w-3xl text-4xl font-black tracking-tight md:text-6xl">EcoIA 2.0 transforma el reciclaje en aprendizaje.</h1>
+          <p className="mb-2 text-sm font-semibold uppercase tracking-[0.2em] text-emerald-100">EcoIA 3.0 · Dashboard público</p>
+          <h1 className="max-w-3xl text-4xl font-black tracking-tight md:text-6xl">EcoIA 3.0 transforma el reciclaje en aprendizaje.</h1>
           <p className="mt-5 max-w-2xl leading-7 text-emerald-50">Consulta pública de la actividad de las estaciones, reciclaje, puntos y estadísticas de la plataforma.</p>
         </div>
 
