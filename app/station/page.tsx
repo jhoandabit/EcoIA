@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Camera, CheckCircle2, RotateCcw, ShieldCheck, UserRound, XCircle } from "lucide-react";
+import { Camera, CheckCircle2, RotateCcw, ShieldCheck, UserRound, Wifi, XCircle } from "lucide-react";
 import { createClient } from "../../lib/supabase/client";
+
+const STATION_CODE = "ECOIA-001";
+const HEARTBEAT_INTERVAL_MS = 30_000;
 
 type Student = {
   id: string;
@@ -18,6 +21,22 @@ export default function StationPage() {
   const [error, setError] = useState("");
   const [manualToken, setManualToken] = useState("");
   const [busy, setBusy] = useState(false);
+  const [stationOnline, setStationOnline] = useState(false);
+
+  async function sendHeartbeat() {
+    const supabase = createClient();
+    const { data, error: heartbeatError } = await supabase.rpc("station_heartbeat", {
+      p_station_code: STATION_CODE,
+    });
+
+    if (heartbeatError || data !== true) {
+      setStationOnline(false);
+      return false;
+    }
+
+    setStationOnline(true);
+    return true;
+  }
 
   async function resolveQr(token: string) {
     const clean = token.trim();
@@ -102,12 +121,20 @@ export default function StationPage() {
     setManualToken("");
     setError("");
     setBusy(false);
+    await sendHeartbeat();
     await startScanner();
   }
 
   useEffect(() => {
-    startScanner();
+    void sendHeartbeat();
+    const heartbeatTimer = window.setInterval(() => {
+      void sendHeartbeat();
+    }, HEARTBEAT_INTERVAL_MS);
+
+    void startScanner();
+
     return () => {
+      window.clearInterval(heartbeatTimer);
       void stopScanner();
     };
   }, []);
@@ -117,9 +144,17 @@ export default function StationPage() {
       <div className="mx-auto max-w-5xl">
         <header className="mb-8 flex items-center justify-between gap-4">
           <div>
-            <p className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">EcoIA 3.0 · Estación</p>
+            <p className="text-xs font-bold uppercase tracking-[0.25em] text-emerald-400">
+              EcoIA 3.0 · Estación {STATION_CODE}
+            </p>
             <h1 className="mt-2 text-3xl font-black md:text-4xl">Identificación del estudiante</h1>
-            <p className="mt-2 max-w-2xl text-slate-400">La cámara del portátil o tablet lee el QR y consulta únicamente los datos necesarios en Supabase.</p>
+            <p className="mt-2 max-w-2xl text-slate-400">
+              Esta estación utiliza un portátil o tablet como cerebro y la cámara integrada para leer los QR.
+            </p>
+            <div className="mt-4 inline-flex items-center gap-2 rounded-full border border-slate-700 bg-slate-900 px-3 py-1.5 text-xs font-bold">
+              <span className={stationOnline ? "h-2.5 w-2.5 rounded-full bg-emerald-400" : "h-2.5 w-2.5 rounded-full bg-slate-500"} />
+              {stationOnline ? "Estación en línea" : "Conexión de estación no confirmada"}
+            </div>
           </div>
           <Camera className="hidden text-emerald-400 md:block" size={42} />
         </header>
