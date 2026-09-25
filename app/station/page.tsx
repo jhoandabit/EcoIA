@@ -17,9 +17,9 @@ import { createClient } from "../../lib/supabase/client";
 
 const STATION_CODE = "ECOIA-001";
 const HEARTBEAT_INTERVAL_MS = 30_000;
-const AI_SCAN_INTERVAL_MS = 700;
-const AI_REQUIRED_STABLE_DETECTIONS = 3;
-const AI_MIN_CONFIDENCE = 0.72;
+const AI_SCAN_INTERVAL_MS = 900;
+const AI_REQUIRED_STABLE_DETECTIONS = 2;
+const AI_MIN_CONFIDENCE = 0.55;
 const AI_COOLDOWN_MS = 5_000;
 
 type Student = {
@@ -82,6 +82,10 @@ export default function StationPage() {
   const aiStableClassRef = useRef("");
   const aiStableCountRef = useRef(0);
   const aiLastRegistrationRef = useRef(0);
+  const aiInferenceRunningRef = useRef(false);
+  const studentRef = useRef<Student | null>(null);
+  const stationOnlineRef = useRef(false);
+  const busyRef = useRef(false);
 
   const [student, setStudent] = useState<Student | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -97,6 +101,18 @@ export default function StationPage() {
   const [loadingAi, setLoadingAi] = useState(false);
   const [aiReady, setAiReady] = useState(false);
   const [aiCameraReady, setAiCameraReady] = useState(false);
+
+  useEffect(() => {
+    studentRef.current = student;
+  }, [student]);
+
+  useEffect(() => {
+    stationOnlineRef.current = stationOnline;
+  }, [stationOnline]);
+
+  useEffect(() => {
+    busyRef.current = busy;
+  }, [busy]);
 
   async function sendHeartbeat() {
     const supabase = createClient();
@@ -173,7 +189,7 @@ export default function StationPage() {
     return null;
   }
 
-  async function startAiCamera() {
+  async function startAiCamera(): Promise<boolean> {
     setError("");
     setAiCameraReady(false);
     setStatus("Preparando cámara para reconocer el residuo...");
@@ -232,7 +248,8 @@ export default function StationPage() {
       await video.play();
 
       setAiCameraReady(true);
-      setStatus("Coloca el residuo frente a la cámara y pulsa Analizar residuo.");
+      setStatus("Coloca el residuo frente a la cámara. EcoIA analizará automáticamente.");
+      return true;
     } catch (err) {
       const cameraError = err as DOMException;
       let message = "No se pudo iniciar la cámara para IA.";
@@ -251,6 +268,7 @@ export default function StationPage() {
 
       setError(message);
       setStatus("Cámara IA no disponible.");
+      return false;
     }
   }
 
@@ -363,29 +381,54 @@ export default function StationPage() {
   }
 
   async function runAutomaticAiLoop() {
-    if (!student || !aiModelRef.current || !aiVideoRef.current || busy) return;
+    if (
+      !studentRef.current ||
+      !aiModelRef.current ||
+      !aiVideoRef.current ||
+      busyRef.current ||
+      aiInferenceRunningRef.current
+    ) return;
+
+    aiInferenceRunningRef.current = true;
+
     try {
       const stable = await analyzeWaste();
-      if (stable && Date.now() - aiLastRegistrationRef.current >= AI_COOLDOWN_MS && stationOnline) {
+      if (
+        stable &&
+        Date.now() - aiLastRegistrationRef.current >= AI_COOLDOWN_MS &&
+        stationOnlineRef.current
+      ) {
         aiLastRegistrationRef.current = Date.now();
         await registerRecyclingAutomatic(stable.material, stable.detected);
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "La IA no pudo analizar el objeto.");
+    } finally {
+      aiInferenceRunningRef.current = false;
     }
   }
 
   function stopAiLoop() {
     if (aiLoopRef.current !== null) {
-      window.clearInterval(aiLoopRef.current);
+      window.clearTimeout(aiLoopRef.current);
       aiLoopRef.current = null;
     }
+    aiInferenceRunningRef.current = false;
+  }
+
+  function scheduleNextAiInference() {
+    if (!aiModelRef.current || !studentRef.current || !aiCameraReady || result) return;
+    aiLoopRef.current = window.setTimeout(async () => {
+      await runAutomaticAiLoop();
+      scheduleNextAiInference();
+    }, AI_SCAN_INTERVAL_MS);
   }
 
   function startAiLoop() {
     stopAiLoop();
-    aiLoopRef.current = window.setInterval(() => { void runAutomaticAiLoop(); }, AI_SCAN_INTERVAL_MS);
-    void runAutomaticAiLoop();
+    void runAutomaticAiLoop().finally(() => {
+      scheduleNextAiInference();
+    });
   }
   async function resolveQr(token: string) {
     const clean = token.trim();
@@ -419,8 +462,10 @@ export default function StationPage() {
 
       const modelReady = await loadAiModel();
       if (modelReady) {
-        await startAiCamera();
-        startAiLoop();
+        const cameraReady = await startAiCamera();
+        if (cameraReady) {
+          window.setTimeout(() => startAiLoop(), 0);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "No fue posible validar el QR.");
