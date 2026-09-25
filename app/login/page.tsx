@@ -60,7 +60,7 @@ export default function LoginPage() {
             <Recycle size={24} />
           </div>
           <div>
-            <h1 className="text-2xl font-black">EcoIA 2.0</h1>
+            <h1 className="text-2xl font-black">EcoIA 3.0</h1>
             <p className="text-sm text-slate-500">Administración privada</p>
           </div>
         </div>
