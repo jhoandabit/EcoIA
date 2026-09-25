@@ -42,13 +42,24 @@ export default function Home() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let active = true;
+
     async function load() {
       const supabase = createClient();
       const { data, error } = await supabase.rpc("dashboard_summary");
-      if (!error && data) setSummary(data as Summary);
-      setLoading(false);
+      if (active && !error && data) setSummary(data as Summary);
+      if (active) setLoading(false);
     }
-    load();
+
+    void load();
+    const refreshTimer = window.setInterval(() => {
+      void load();
+    }, 15_000);
+
+    return () => {
+      active = false;
+      window.clearInterval(refreshTimer);
+    };
   }, []);
 
   const metrics: MetricCard[] = [
@@ -110,7 +121,7 @@ export default function Home() {
                     <div className="text-sm text-slate-500">{station.name}</div>
                   </div>
                   <span className={station.status === "online" ? "rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700" : "rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-600"}>
-                    {station.status}
+                    {station.status === "online" ? "en línea" : "fuera de línea"}
                   </span>
                 </div>
                 <div className="mt-5 flex items-center gap-2 text-sm text-slate-600"><Activity size={16} />{station.device_model} + {station.camera_model ?? "sin cámara"}</div>
