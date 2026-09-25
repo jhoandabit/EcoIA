@@ -86,6 +86,8 @@ export default function StationPage() {
   const studentRef = useRef<Student | null>(null);
   const stationOnlineRef = useRef(false);
   const busyRef = useRef(false);
+  const materialsRef = useRef<Material[]>([]);
+  const resultRef = useRef<RegistrationResult | null>(null);
 
   const [student, setStudent] = useState<Student | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -113,6 +115,14 @@ export default function StationPage() {
   useEffect(() => {
     busyRef.current = busy;
   }, [busy]);
+
+  useEffect(() => {
+    materialsRef.current = materials;
+  }, [materials]);
+
+  useEffect(() => {
+    resultRef.current = result;
+  }, [result]);
 
   async function sendHeartbeat() {
     const supabase = createClient();
@@ -287,7 +297,16 @@ export default function StationPage() {
   }
 
   async function analyzeWaste() {
-    if (!student || !aiModelRef.current || !aiVideoRef.current || busy) return null;
+    const currentStudent = studentRef.current;
+    const currentMaterials = materialsRef.current;
+
+    if (
+      !currentStudent ||
+      !aiModelRef.current ||
+      !aiVideoRef.current ||
+      busyRef.current
+    ) return null;
+
     if (aiVideoRef.current.readyState < 2) return null;
 
     const predictions = await aiModelRef.current.detect(aiVideoRef.current);
@@ -330,7 +349,7 @@ export default function StationPage() {
       return null;
     }
 
-    const material = materials.find((item) => item.code === mapped.code);
+    const material = currentMaterials.find((item) => item.code === mapped.code);
     if (!material) return null;
 
     if (aiStableClassRef.current === normalized) aiStableCountRef.current += 1;
@@ -349,7 +368,11 @@ export default function StationPage() {
   }
 
   async function registerRecyclingAutomatic(material: Material, detected: AiDetection) {
-    if (!student || busy) return;
+    const currentStudent = studentRef.current;
+
+    if (!currentStudent || busyRef.current) return;
+
+    busyRef.current = true;
     setBusy(true);
     setError("");
     setStatus(`Registrando automáticamente: ${detected.className}...`);
@@ -357,7 +380,7 @@ export default function StationPage() {
     try {
       const supabase = createClient();
       const { data, error: rpcError } = await supabase.rpc("register_recycling_event", {
-        p_student_id: student.id,
+        p_student_id: currentStudent.id,
         p_station_code: STATION_CODE,
         p_material_code: material.code,
         p_confidence: detected.score,
@@ -376,6 +399,7 @@ export default function StationPage() {
       setError(err instanceof Error ? err.message : "No fue posible registrar el reciclaje.");
       setStatus("No fue posible registrar automáticamente el reciclaje.");
     } finally {
+      busyRef.current = false;
       setBusy(false);
     }
   }
@@ -417,7 +441,15 @@ export default function StationPage() {
   }
 
   function scheduleNextAiInference() {
-    if (!aiModelRef.current || !studentRef.current || !aiCameraReady || result) return;
+    if (
+      !aiModelRef.current ||
+      !studentRef.current ||
+      !aiStreamRef.current ||
+      resultRef.current
+    ) {
+      return;
+    }
+
     aiLoopRef.current = window.setTimeout(async () => {
       await runAutomaticAiLoop();
       scheduleNextAiInference();
