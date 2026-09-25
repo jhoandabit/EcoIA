@@ -81,11 +81,11 @@ export default function SetupPage() {
     <main className="min-h-screen bg-slate-950 px-6 py-12 text-white">
       <div className="mx-auto max-w-xl rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-2xl">
         <p className="text-sm font-semibold uppercase tracking-[0.2em] text-emerald-400">
-          EcoIA 2.0
+          EcoIA 3.0
         </p>
         <h1 className="mt-3 text-3xl font-bold">Configuración inicial</h1>
         <p className="mt-3 text-slate-300">
-          Esta operación solo puede realizarse una vez y está reservada para la cuenta administrativa de EcoIA 2.0.
+          Esta operación solo puede realizarse una vez y está reservada para la cuenta administrativa de EcoIA 3.0.
         </p>
 
         <div className="mt-8 rounded-xl border border-slate-700 bg-slate-950 p-4">
