@@ -154,6 +154,14 @@ export default function StationPage() {
     }
   }
 
+  async function waitForAiVideo() {
+    for (let attempt = 0; attempt < 30; attempt += 1) {
+      if (aiVideoRef.current) return aiVideoRef.current;
+      await new Promise<void>((resolve) => window.requestAnimationFrame(() => resolve()));
+    }
+    return null;
+  }
+
   async function startAiCamera() {
     setError("");
     setAiCameraReady(false);
@@ -162,6 +170,11 @@ export default function StationPage() {
     try {
       if (!navigator.mediaDevices?.getUserMedia) {
         throw new Error("getUserMedia no está disponible en este navegador.");
+      }
+
+      const video = await waitForAiVideo();
+      if (!video) {
+        throw new Error("La interfaz de cámara IA todavía no está disponible. Vuelve a intentarlo.");
       }
 
       // El lector QR acaba de liberar su cámara. Esperamos un instante
@@ -192,13 +205,6 @@ export default function StationPage() {
       }
 
       aiStreamRef.current = stream;
-
-      const video = aiVideoRef.current;
-      if (!video) {
-        stream.getTracks().forEach((track) => track.stop());
-        aiStreamRef.current = null;
-        throw new Error("No se encontró el visor de cámara.");
-      }
 
       video.srcObject = stream;
       await new Promise<void>((resolve) => {
