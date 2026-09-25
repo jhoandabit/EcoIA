@@ -17,6 +17,10 @@ import { createClient } from "../../lib/supabase/client";
 
 const STATION_CODE = "ECOIA-001";
 const HEARTBEAT_INTERVAL_MS = 30_000;
+const AI_SCAN_INTERVAL_MS = 700;
+const AI_REQUIRED_STABLE_DETECTIONS = 3;
+const AI_MIN_CONFIDENCE = 0.72;
+const AI_COOLDOWN_MS = 5_000;
 
 type Student = {
   id: string;
@@ -60,7 +64,10 @@ const AI_CLASS_TO_MATERIAL: Record<
   bottle: { code: "PLASTIC", name: "Plástico" },
   cup: { code: "PLASTIC", name: "Plástico" },
   "wine glass": { code: "GLASS", name: "Vidrio" },
+  can: { code: "METAL", name: "Metal" },
 };
+const AI_REJECTED_CLASSES = new Set(["book","laptop","cell phone","keyboard","remote","tv","mouse","person","handbag","backpack","suitcase"]);
+
 
 function normalizeAiClass(value: string) {
   return value.trim().toLowerCase();
@@ -71,6 +78,10 @@ export default function StationPage() {
   const aiModelRef = useRef<CocoModel | null>(null);
   const aiStreamRef = useRef<MediaStream | null>(null);
   const aiVideoRef = useRef<HTMLVideoElement | null>(null);
+  const aiLoopRef = useRef<number | null>(null);
+  const aiStableClassRef = useRef("");
+  const aiStableCountRef = useRef(0);
+  const aiLastRegistrationRef = useRef(0);
 
   const [student, setStudent] = useState<Student | null>(null);
   const [materials, setMaterials] = useState<Material[]>([]);
@@ -258,69 +269,124 @@ export default function StationPage() {
   }
 
   async function analyzeWaste() {
-    if (!student || !aiModelRef.current || !aiVideoRef.current || busy) return;
+    if (!student || !aiModelRef.current || !aiVideoRef.current || busy) return null;
+    if (aiVideoRef.current.readyState < 2) return null;
 
-    if (aiVideoRef.current.readyState < 2) {
-      setError("La cámara todavía no está lista.");
-      return;
+    const predictions = await aiModelRef.current.detect(aiVideoRef.current);
+    const best = [...predictions].filter((p) => p.score >= AI_MIN_CONFIDENCE).sort((a,b) => b.score-a.score)[0];
+
+    if (!best) {
+      aiStableClassRef.current = "";
+      aiStableCountRef.current = 0;
+      setDetection(null);
+      setSelectedMaterial(null);
+      setStatus("Buscando un objeto reciclable...");
+      return null;
     }
 
+    const normalized = normalizeAiClass(best.class);
+
+    if (AI_REJECTED_CLASSES.has(normalized)) {
+      aiStableClassRef.current = "";
+      aiStableCountRef.current = 0;
+      setDetection({ className: best.class, score: best.score, materialCode: null, materialName: null });
+      setSelectedMaterial(null);
+      setStatus(`La IA detectó "${best.class}". No se clasificará automáticamente como residuo.`);
+      return null;
+    }
+
+    const mapped = AI_CLASS_TO_MATERIAL[normalized] ?? null;
+    const detected: AiDetection = {
+      className: best.class,
+      score: best.score,
+      materialCode: mapped?.code ?? null,
+      materialName: mapped?.name ?? null,
+    };
+    setDetection(detected);
+
+    if (!mapped) {
+      aiStableClassRef.current = "";
+      aiStableCountRef.current = 0;
+      setSelectedMaterial(null);
+      setStatus(`Detectado "${best.class}", pero esta clase aún no pertenece al catálogo IA de EcoIA.`);
+      return null;
+    }
+
+    const material = materials.find((item) => item.code === mapped.code);
+    if (!material) return null;
+
+    if (aiStableClassRef.current === normalized) aiStableCountRef.current += 1;
+    else {
+      aiStableClassRef.current = normalized;
+      aiStableCountRef.current = 1;
+    }
+
+    setSelectedMaterial(material);
+    setStatus(`IA: ${best.class} · ${Math.round(best.score * 100)}% · detección estable ${aiStableCountRef.current}/${AI_REQUIRED_STABLE_DETECTIONS}`);
+
+    if (aiStableCountRef.current >= AI_REQUIRED_STABLE_DETECTIONS) {
+      return { material, detected };
+    }
+    return null;
+  }
+
+  async function registerRecyclingAutomatic(material: Material, detected: AiDetection) {
+    if (!student || busy) return;
     setBusy(true);
     setError("");
-    setDetection(null);
-    setSelectedMaterial(null);
-    setStatus("La IA está analizando el objeto...");
+    setStatus(`Registrando automáticamente: ${detected.className}...`);
 
     try {
-      const predictions = await aiModelRef.current.detect(aiVideoRef.current);
+      const supabase = createClient();
+      const { data, error: rpcError } = await supabase.rpc("register_recycling_event", {
+        p_student_id: student.id,
+        p_station_code: STATION_CODE,
+        p_material_code: material.code,
+        p_confidence: detected.score,
+        p_image_path: null,
+      });
+      if (rpcError) throw rpcError;
 
-      const best = [...predictions]
-        .filter((prediction) => prediction.score >= 0.55)
-        .sort((a, b) => b.score - a.score)[0];
+      const registered = Array.isArray(data) ? data[0] : data;
+      if (!registered) throw new Error("Supabase no devolvió el evento registrado.");
 
-      if (!best) {
-        setStatus("No se detectó un objeto con suficiente confianza.");
-        setError("Acerca el residuo a la cámara, mejora la iluminación y vuelve a analizar.");
-        return;
-      }
-
-      const normalized = normalizeAiClass(best.class);
-      const mapped = AI_CLASS_TO_MATERIAL[normalized] ?? null;
-
-      const aiDetection: AiDetection = {
-        className: best.class,
-        score: best.score,
-        materialCode: mapped?.code ?? null,
-        materialName: mapped?.name ?? null,
-      };
-
-      setDetection(aiDetection);
-
-      if (!mapped) {
-        setStatus(`La IA detectó "${best.class}", pero todavía no tiene una categoría de reciclaje configurada.`);
-        return;
-      }
-
-      const material = materials.find((item) => item.code === mapped.code);
-      if (!material) {
-        setStatus(`La IA detectó ${mapped.name}, pero ese material no está disponible en Supabase.`);
-        return;
-      }
-
-      setSelectedMaterial(material);
-      setStatus(
-        `IA: ${best.class} · ${Math.round(best.score * 100)}% · ${material.name}`,
-      );
+      setResult(registered as RegistrationResult);
+      stopAiLoop();
+      stopAiCamera();
+      setStatus("Reciclaje reconocido y registrado automáticamente.");
     } catch (err) {
-      setError(
-        err instanceof Error ? err.message : "La IA no pudo analizar el objeto.",
-      );
-      setStatus("No fue posible analizar el residuo.");
+      setError(err instanceof Error ? err.message : "No fue posible registrar el reciclaje.");
+      setStatus("No fue posible registrar automáticamente el reciclaje.");
     } finally {
       setBusy(false);
     }
   }
 
+  async function runAutomaticAiLoop() {
+    if (!student || !aiModelRef.current || !aiVideoRef.current || busy) return;
+    try {
+      const stable = await analyzeWaste();
+      if (stable && Date.now() - aiLastRegistrationRef.current >= AI_COOLDOWN_MS && stationOnline) {
+        aiLastRegistrationRef.current = Date.now();
+        await registerRecyclingAutomatic(stable.material, stable.detected);
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "La IA no pudo analizar el objeto.");
+    }
+  }
+
+  function stopAiLoop() {
+    if (aiLoopRef.current !== null) {
+      window.clearInterval(aiLoopRef.current);
+      aiLoopRef.current = null;
+    }
+  }
+
+  function startAiLoop() {
+    stopAiLoop();
+    aiLoopRef.current = window.setInterval(() => { void runAutomaticAiLoop(); }, AI_SCAN_INTERVAL_MS);
+    void runAutomaticAiLoop();
+  }
   async function resolveQr(token: string) {
     const clean = token.trim();
     if (!clean || busy) return;
@@ -354,6 +420,7 @@ export default function StationPage() {
       const modelReady = await loadAiModel();
       if (modelReady) {
         await startAiCamera();
+        startAiLoop();
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : "No fue posible validar el QR.");
@@ -388,6 +455,7 @@ export default function StationPage() {
       if (!registered) throw new Error("Supabase no devolvió el evento registrado.");
 
       setResult(registered as RegistrationResult);
+      stopAiLoop();
       stopAiCamera();
       setStatus("Reciclaje registrado correctamente.");
     } catch (err) {
@@ -444,6 +512,7 @@ export default function StationPage() {
 
   async function resetStation() {
     await stopScanner();
+    stopAiLoop();
     stopAiCamera();
     setStudent(null);
     setSelectedMaterial(null);
@@ -468,6 +537,7 @@ export default function StationPage() {
     return () => {
       window.clearInterval(heartbeatTimer);
       void stopScanner();
+      stopAiLoop();
       stopAiCamera();
     };
   }, []);
@@ -624,22 +694,13 @@ export default function StationPage() {
                   </div>
                 )}
 
-                <button
-                  type="button"
-                  onClick={analyzeWaste}
-                  disabled={!aiReady || !aiCameraReady || busy}
-                  className="mt-5 flex w-full items-center justify-center gap-2 rounded-xl bg-slate-950 px-5 py-3 font-black text-white disabled:cursor-not-allowed disabled:opacity-40"
-                >
-                  {busy ? (
-                    <>
-                      <Loader2 className="animate-spin" size={18} /> Analizando...
-                    </>
-                  ) : (
-                    <>
-                      <ScanSearch size={18} /> Analizar residuo con IA
-                    </>
-                  )}
-                </button>
+                <div className="mt-5 rounded-xl bg-slate-950 px-5 py-4 text-center text-sm font-bold text-white">
+                  <ScanSearch className="mx-auto mb-2 text-emerald-400" size={22} />
+                  Reconocimiento automático activo
+                  <p className="mt-1 text-xs font-normal text-slate-400">
+                    EcoIA analiza continuamente y espera una detección estable antes de registrar.
+                  </p>
+                </div>
               </>
             )}
           </section>
@@ -712,7 +773,7 @@ export default function StationPage() {
                     </>
                   ) : (
                     <p className="mt-2 text-sm text-slate-300">
-                      La clasificación aparecerá aquí después de analizar el residuo.
+                      La IA está analizando continuamente la cámara. Coloca un residuo frente al lente.
                     </p>
                   )}
                 </div>
