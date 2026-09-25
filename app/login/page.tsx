@@ -4,8 +4,6 @@ import { FormEvent, useState } from "react";
 import { LockKeyhole, Recycle } from "lucide-react";
 import { createClient } from "../../lib/supabase/client";
 
-const ADMIN_EMAIL = "jhdbermudez@gmail.com";
-
 export default function LoginPage() {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -29,8 +27,6 @@ export default function LoginPage() {
       return;
     }
 
-    const signedEmail = data.user.email?.toLowerCase() ?? "";
-
     const { data: profile } = await supabase
       .from("profiles")
       .select("role")
@@ -42,7 +38,7 @@ export default function LoginPage() {
       return;
     }
 
-    if (signedEmail === ADMIN_EMAIL) {
+    if (!profile) {
       window.location.href = "/setup";
       return;
     }
